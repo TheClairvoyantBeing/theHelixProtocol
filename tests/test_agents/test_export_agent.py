@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 import pytest
 import asyncio
 from helix.agents.export_agent import ExportAgent

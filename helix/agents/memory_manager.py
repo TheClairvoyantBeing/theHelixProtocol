@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 """MemoryManager controls working, episodic, and semantic memory."""
 
 import asyncio

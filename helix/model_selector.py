@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 """Model selection logic based on hardware capabilities."""
 
 from helix.hardware import HardwareProfile

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 import pytest
 from helix.ingest.router import FileRouter
 from helix.ingest.processors.image import ImageProcessor

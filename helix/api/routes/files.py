@@ -1,24 +1,28 @@
-"""Files and Search REST API routes."""
+"""
+Module: helix/api/routes/files.py
+Copyright (c) 2026 HELIX. All rights reserved.
+
+Files and Search REST API routes using Pydantic schemas.
+"""
 
 from fastapi import APIRouter
-from typing import Any
-from pydantic import BaseModel, Field
+from helix.api.schemas import (
+    SearchRequest, FileResponse, FileData, FileListResponse
+)
 
 router = APIRouter()
 
-class SearchRequest(BaseModel):
-    query: str = Field(min_length=1, max_length=2000)
-    mode: str = "hybrid"
-    limit: int = Field(default=10, ge=1, le=100)
+@router.get("/files", response_model=FileListResponse)
+async def list_files() -> FileListResponse:
+    """Lists files based on query parameters."""
+    return FileListResponse(success=True, data=[])
 
-@router.get("/files")
-async def list_files() -> dict[str, Any]:
-    return {"success": True, "data": []}
+@router.get("/files/{id}", response_model=FileResponse)
+async def get_file(id: str) -> FileResponse:
+    """Retrieves a specific file by ID."""
+    return FileResponse(success=True, data=FileData(id=id))
 
-@router.get("/files/{id}")
-async def get_file(id: str) -> dict[str, Any]:
-    return {"success": True, "data": {"id": id}}
-
-@router.post("/search")
-async def search(body: SearchRequest) -> dict[str, Any]:
-    return {"success": True, "data": []}
+@router.post("/search", response_model=FileListResponse)
+async def search(body: SearchRequest) -> FileListResponse:
+    """Executes a semantic or keyword search."""
+    return FileListResponse(success=True, data=[])

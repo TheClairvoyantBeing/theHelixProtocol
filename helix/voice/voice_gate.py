@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 """VoiceGate handles wake word and microphone capture."""
 
 import asyncio

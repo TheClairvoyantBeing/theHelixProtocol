@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 """Event Bus for inter-agent communication."""
 
 from dataclasses import dataclass, field

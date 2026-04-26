@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 """Document processor for HELIX ingest pipeline (DOCX, XLSX, PPTX)."""
 
 from pathlib import Path

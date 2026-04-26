@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 """GraphBuilder agent constructs the knowledge graph."""
 
 import asyncio

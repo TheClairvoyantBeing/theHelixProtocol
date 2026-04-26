@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 """ChromaDB vector store wrapper for HELIX."""
 
 import logging

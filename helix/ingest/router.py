@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 """Routes files to the appropriate processor based on MIME type."""
 
 from typing import Type

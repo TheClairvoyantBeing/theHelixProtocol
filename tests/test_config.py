@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 from helix.config import VaultConfig
 from pydantic_settings import BaseSettings
 

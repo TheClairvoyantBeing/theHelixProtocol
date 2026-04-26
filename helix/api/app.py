@@ -1,9 +1,17 @@
-"""FastAPI application skeleton with CORS and security headers."""
+"""
+Module: helix/api/app.py
+Copyright (c) 2026 HELIX. All rights reserved.
+
+FastAPI application skeleton with CORS and security headers.
+"""
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse, FileResponse
+import os
 from helix.api.routes.files import router as files_router
 from helix.api.routes.api import router as full_api_router
-from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="HELIX REST API", version="0.1.0")
 
@@ -41,3 +49,15 @@ app.include_router(full_api_router, prefix="/api/v1")
 async def get_status():
     """Health check endpoint."""
     return {"success": True, "data": {"status": "ok"}}
+
+# Serve frontend static files if they exist
+frontend_dist = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
+if os.path.exists(frontend_dist):
+    assets_dir = os.path.join(frontend_dist, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/")
+    async def serve_index():
+        """Serve the frontend index.html on the root path."""
+        return FileResponse(os.path.join(frontend_dist, "index.html"))

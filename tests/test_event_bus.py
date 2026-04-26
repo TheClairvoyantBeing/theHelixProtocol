@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 from helix.event_bus import EventBus, FileQueued
 
 def test_event_bus():

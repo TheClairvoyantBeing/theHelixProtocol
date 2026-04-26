@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 """ReflexAgent manages self-improvement and behavioural rules."""
 
 import asyncio

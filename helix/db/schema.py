@@ -1,41 +1,49 @@
-"""Database schema and migrations manager."""
+"""
+Module: helix/db/schema.py
+Copyright (c) 2026 HELIX. All rights reserved.
+
+Database schema and migrations manager using SQLAlchemy 2.0.
+"""
 
 from datetime import datetime, timezone
 from pathlib import Path
-import aiosqlite
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker, AsyncConnection
+from sqlalchemy import text
 from helix.config import config
 
 MIGRATIONS = [
     (1, "initial_schema", "helix/db/migrations/0001_initial.sql"),
 ]
 
-async def apply_pending_migrations(conn: aiosqlite.Connection) -> None:
+async def apply_pending_migrations(conn: AsyncConnection) -> None:
     """Applies any pending migrations to the SQLite database."""
-    # Ensure migrations table exists
-    await conn.execute('''
+    # We must use sqlalchemy.text() for raw queries
+    await conn.execute(text('''
         CREATE TABLE IF NOT EXISTS schema_migrations (
             version         INTEGER PRIMARY KEY,
             name            TEXT NOT NULL,
             applied_at      TEXT NOT NULL
         )
-    ''')
-    await conn.commit()
+    '''))
 
     # Get applied migrations
-    async with conn.execute("SELECT version FROM schema_migrations") as cursor:
-        rows = await cursor.fetchall()
-        applied = {row[0] for row in rows}
+    result = await conn.execute(text("SELECT version FROM schema_migrations"))
+    applied = {row[0] for row in result.fetchall()}
 
     for version, name, path in MIGRATIONS:
         if version not in applied:
-            sql = Path(path).read_text()
-            await conn.executescript(sql)
+            sql_content = Path(path).read_text()
+
+            # Access the underlying aiosqlite connection correctly for async execution
+            # driver_connection is the aiosqlite.Connection
+            raw_conn = await conn.get_raw_connection()
+            aiosqlite_conn = raw_conn.driver_connection
+            await aiosqlite_conn.executescript(sql_content) # type: ignore
+
             await conn.execute(
-                "INSERT INTO schema_migrations VALUES (?, ?, ?)",
-                (version, name, datetime.now(timezone.utc).isoformat())
+                text("INSERT INTO schema_migrations VALUES (:version, :name, :applied_at)"),
+                {"version": version, "name": name, "applied_at": datetime.now(timezone.utc).isoformat()}
             )
-    await conn.commit()
 
 # Setup SQLAlchemy engine and session factory
 db_path = Path(config.vault.index_path).expanduser() / "helix.db"

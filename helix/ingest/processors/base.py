@@ -1,4 +1,9 @@
-"""Base processor module for HELIX ingest pipeline."""
+"""
+Module: helix/ingest/processors/base.py
+Copyright (c) 2026 HELIX. All rights reserved.
+
+Base processor module for HELIX ingest pipeline.
+"""
 
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -7,18 +12,20 @@ from typing import Optional, Any
 
 @dataclass
 class RawContent:
+    """Dataclass holding extracted file contents."""
     text: str                    # extracted text, sanitised, max 8000 chars
     full_text: str               # full text, no truncation (for chunking)
     frames: list[Path]           # temp image files (MUST be cleaned up)
     audio_path: Optional[Path]   # temp audio file (MUST be cleaned up)
     metadata: dict[str, Any]     # EXIF, page count, duration, codec, etc.
+    # Use Any here for metadata because EXIF/metadata values are deeply heterogeneous.
     mime_type: str
     file_path: Path
 
 class BaseProcessor(ABC):
     """Abstract base class for all file processors."""
 
-    _registry: dict[str, type] = {}
+    _registry: dict[str, type["BaseProcessor"]] = {}
 
     def __init_subclass__(cls, mime_patterns: list[str] = [], **kwargs: Any):
         super().__init_subclass__(**kwargs)
@@ -38,12 +45,15 @@ class BaseProcessor(ABC):
     async def generate_record(
         self,
         raw: RawContent,
-        llm_client: Any,
-        config: Any
+        llm_client: Any, # type: ignore
+        config: Any # type: ignore
     ) -> dict[str, Any]:
-        """Call LLM to generate FileRecord fields. Returns validated dict."""
+        """
+        Call LLM to generate FileRecord fields.
+        Returns validated dict structure. Uses Any for LLM responses.
+        """
         return {}
 
-    async def embed(self, file_id: str, raw: RawContent, vector_store: Any) -> None:
+    async def embed(self, file_id: str, raw: RawContent, vector_store: Any) -> None: # type: ignore
         """Chunk full_text and write embeddings to ChromaDB."""
         pass

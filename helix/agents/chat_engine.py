@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 """ChatEngine agent handles the conversational loop and querying."""
 
 import asyncio

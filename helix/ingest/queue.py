@@ -1,4 +1,9 @@
-"""Manages the queue of files waiting to be processed."""
+"""
+Module: helix/ingest/queue.py
+Copyright (c) 2026 HELIX. All rights reserved.
+
+Manages the queue of files waiting to be processed.
+"""
 
 import asyncio
 from pathlib import Path
@@ -45,6 +50,7 @@ class IngestionQueue:
         logger.info("IngestionQueue stopped.")
 
     async def _worker(self, worker_id: int) -> None:
+        """Asynchronous worker that pulls from the queue and processes files."""
         while self._running:
             try:
                 event = await self.queue.get()
@@ -56,7 +62,7 @@ class IngestionQueue:
                 logger.error(f"Worker {worker_id} error: {e}", exc_info=True)
 
     async def _process_file(self, event: FileQueued) -> None:
-        # Stub for processing
+        """Invokes the appropriate processor for the file."""
         path = Path(event.path)
         processor_cls = self.router.get_processor(event.mime_type, path.suffix.lower())
         if not processor_cls:
@@ -64,4 +70,13 @@ class IngestionQueue:
             return
 
         logger.info(f"Processing {event.path} with {processor_cls.__name__}")
-        # In full implementation, we'd instantiate processor, check hash, extract, LLM, emit FileProcessed
+
+        processor = processor_cls()
+        try:
+            # Emulates extraction pipeline
+            raw = await processor.extract(path)
+            await processor.generate_record(raw, None, config)
+            # In a full implementation, the DB upsert and ChromaDB embedding happen here
+            logger.info(f"Successfully processed {path.name}")
+        except Exception as e:
+            logger.error(f"Error processing {path.name}: {e}")

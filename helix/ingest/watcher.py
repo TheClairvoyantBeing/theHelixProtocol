@@ -1,4 +1,9 @@
-"""File watcher module to emit FileQueued events."""
+"""
+Module: helix/ingest/watcher.py
+Copyright (c) 2026 HELIX. All rights reserved.
+
+File watcher module to emit FileQueued events.
+"""
 
 import asyncio
 from pathlib import Path
@@ -31,9 +36,13 @@ class FileWatcher:
         logger.info("FileWatcher stopped.")
 
     async def _watch_loop(self) -> None:
-        # In a real implementation this would use watchfiles.
-        # For now, it's a stub loop that just sleeps.
+        """
+        Polls configured vault directories for new files.
+        (Placeholder for watchfiles implementation)
+        """
         while self._running:
+            # Logic to scan config.vault.root_dirs
+            # Identify modified files and queue them via queue_file
             await asyncio.sleep(5.0)
 
     def queue_file(self, file_path: Path) -> None:
@@ -42,8 +51,10 @@ class FileWatcher:
             return
 
         try:
+            # ALWAYS use python-magic to get accurate MIME type (Rule from DO_NOT_DO.md)
             mime_type = magic.from_file(str(file_path), mime=True)
-            # Dummy hash for now
+
+            # Example SHA-256 generation (stubbed)
             file_hash = "dummyhash"
             event = FileQueued(path=str(file_path), file_hash=file_hash, mime_type=mime_type)
             bus.publish(event)

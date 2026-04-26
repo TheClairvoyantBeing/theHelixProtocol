@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 import pytest
 from pathlib import Path
 from helix.ingest.processors.base import BaseProcessor, RawContent

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 """Audio processor for HELIX ingest pipeline."""
 
 from pathlib import Path

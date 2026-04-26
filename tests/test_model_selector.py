@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 from helix.model_selector import ModelSelector
 from helix.hardware import HardwareProfile
 from helix.config import config
