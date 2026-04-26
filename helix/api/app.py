@@ -8,7 +8,7 @@ FastAPI application skeleton with CORS and security headers.
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.responses import FileResponse
 import os
 from helix.api.routes.files import router as files_router
 from helix.api.routes.api import router as full_api_router

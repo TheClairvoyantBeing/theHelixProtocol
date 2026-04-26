@@ -10,6 +10,8 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker, AsyncConnection
 from sqlalchemy import text
 from helix.config import config
+import contextlib
+from typing import AsyncGenerator
 
 MIGRATIONS = [
     (1, "initial_schema", "helix/db/migrations/0001_initial.sql"),
@@ -60,7 +62,8 @@ AsyncSessionLocal = async_sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
 
-async def get_session() -> AsyncSession: # type: ignore
+@contextlib.asynccontextmanager
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Provides a transactional scope around a series of operations."""
     async with AsyncSessionLocal() as session:
         yield session

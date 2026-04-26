@@ -34,7 +34,7 @@ class TaskAgent:
     async def _check_reminders(self) -> None:
         now_str = datetime.now(timezone.utc).isoformat()
         try:
-            async for session in get_session():
+            async with get_session() as session:
                 result = await session.execute(
                     text("SELECT id, task_id, message FROM reminders WHERE remind_at <= :now AND delivered = 0"),
                     {"now": now_str}
