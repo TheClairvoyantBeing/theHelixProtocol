@@ -14,6 +14,11 @@ cd ..
 echo "Creating executable..."
 poetry run pyinstaller --onefile --name helix --clean \
     --add-data "frontend/dist:frontend/dist" \
+    --hidden-import="aiosqlite" \
+    --hidden-import="uvicorn" \
+    --hidden-import="fastapi" \
+    --hidden-import="sqlalchemy" \
+    --hidden-import="chromadb" \
     helix/main.py || true
 
 echo "Build complete! Executable is located in the dist/ folder."

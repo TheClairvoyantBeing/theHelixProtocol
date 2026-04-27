@@ -27,6 +27,6 @@ if (-not (Get-Command "poetry" -ErrorAction SilentlyContinue)) {
     }
 }
 poetry install
-poetry run pyinstaller --name "helix-os" --onefile --add-data "frontend/dist;frontend/dist" helix/main.py
+poetry run pyinstaller --name "helix-os" --onefile --add-data "frontend/dist;frontend/dist" --hidden-import="aiosqlite" --hidden-import="uvicorn" --hidden-import="fastapi" --hidden-import="sqlalchemy" --hidden-import="chromadb" helix/main.py
 
 Write-Host "Build complete! Executable is in the dist/ folder."

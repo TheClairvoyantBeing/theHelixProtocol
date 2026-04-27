@@ -8,7 +8,6 @@ FastAPI application skeleton with CORS and security headers.
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 import os
 from helix.api.routes.files import router as files_router
 from helix.api.routes.api import router as full_api_router
@@ -53,11 +52,4 @@ async def get_status():
 # Serve frontend static files if they exist
 frontend_dist = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
 if os.path.exists(frontend_dist):
-    assets_dir = os.path.join(frontend_dist, "assets")
-    if os.path.exists(assets_dir):
-        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
-
-    @app.get("/")
-    async def serve_index():
-        """Serve the frontend index.html on the root path."""
-        return FileResponse(os.path.join(frontend_dist, "index.html"))
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")

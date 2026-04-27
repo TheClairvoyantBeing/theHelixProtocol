@@ -48,7 +48,15 @@ jobs:
           cd ..
 
       - name: Build executable
-        run: poetry run pyinstaller --onefile --name ${{ matrix.executable_name }} --clean --add-data "frontend/dist${{ matrix.path_sep }}frontend/dist" helix/main.py
+        run: >
+          poetry run pyinstaller --onefile --name ${{ matrix.executable_name }} --clean
+          --add-data "frontend/dist${{ matrix.path_sep }}frontend/dist"
+          --hidden-import="aiosqlite"
+          --hidden-import="uvicorn"
+          --hidden-import="fastapi"
+          --hidden-import="sqlalchemy"
+          --hidden-import="chromadb"
+          helix/main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
