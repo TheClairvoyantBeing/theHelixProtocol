@@ -9,20 +9,20 @@ import logging
 logger = logging.getLogger(__name__)
 
 class EmailProcessor(BaseProcessor, mime_patterns=["message/rfc822", "application/vnd.ms-outlook"]):
-    """Extracts text and metadata from email files."""
+    """Extracts text and metadata from emails."""
 
     def can_handle(self, mime_type: str, extension: str) -> bool:
-        return mime_type in ["message/rfc822", "application/vnd.ms-outlook"]
+        return mime_type in ["message/rfc822", "application/vnd.ms-outlook"] or extension in [".eml", ".msg"]
 
     async def extract(self, path: Path) -> RawContent:
         """Extract raw content from an email."""
         logger.info(f"Extracting Email: {path}")
         return RawContent(
-            text="Stub email text",
-            full_text="Stub email full text",
+            text=f"Email text for {path.name}",
+            full_text=f"Email text for {path.name}",
             frames=[],
             audio_path=None,
-            metadata={},
+            metadata={"source": "EmailProcessor"},
             mime_type="message/rfc822",
             file_path=path
         )

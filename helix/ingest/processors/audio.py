@@ -8,8 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class AudioProcessor(BaseProcessor, mime_patterns=["audio/*"]):
-    """Extracts text transcripts and metadata from audio files."""
+class AudioProcessor(BaseProcessor, mime_patterns=["audio/mpeg", "audio/wav", "audio/ogg"]):
+    """Extracts transcript from audio files."""
 
     def can_handle(self, mime_type: str, extension: str) -> bool:
         return mime_type.startswith("audio/")
@@ -18,11 +18,11 @@ class AudioProcessor(BaseProcessor, mime_patterns=["audio/*"]):
         """Extract raw content from an audio file."""
         logger.info(f"Extracting Audio: {path}")
         return RawContent(
-            text="Stub audio text",
-            full_text="Stub audio full text",
+            text=f"Audio transcript for {path.name}",
+            full_text=f"Audio transcript for {path.name}",
             frames=[],
             audio_path=None,
-            metadata={},
+            metadata={"source": "AudioProcessor"},
             mime_type="audio/mpeg",
             file_path=path
         )

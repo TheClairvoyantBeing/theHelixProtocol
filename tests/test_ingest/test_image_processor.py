@@ -1,5 +1,3 @@
-# Copyright (c) 2026 HELIX. All rights reserved.
-# HELIX Personal Intelligence OS
 import pytest
 from pathlib import Path
 from helix.ingest.processors.image import ImageProcessor
@@ -7,11 +5,18 @@ from helix.ingest.processors.image import ImageProcessor
 def test_image_processor_can_handle():
     proc = ImageProcessor()
     assert proc.can_handle("image/jpeg", ".jpg")
-    assert not proc.can_handle("video/mp4", ".mp4")
+    assert proc.can_handle("image/png", ".png")
+    assert not proc.can_handle("application/pdf", ".pdf")
 
 @pytest.mark.asyncio
-async def test_image_processor_extract():
+async def test_image_processor_extract(tmp_path):
     proc = ImageProcessor()
-    raw = await proc.extract(Path("/fake.jpg"))
+
+    from PIL import Image
+    test_img = tmp_path / "test.jpg"
+    img = Image.new('RGB', (100, 100), color = 'red')
+    img.save(test_img)
+
+    raw = await proc.extract(test_img)
     assert raw.mime_type == "image/jpeg"
-    assert raw.text == "Stub image text"
+    assert raw.metadata["format"] == "JPEG"

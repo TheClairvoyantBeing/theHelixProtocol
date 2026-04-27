@@ -5,6 +5,7 @@
 from pathlib import Path
 from helix.ingest.processors.base import BaseProcessor, RawContent
 import logging
+import aiofiles
 
 logger = logging.getLogger(__name__)
 
@@ -17,12 +18,23 @@ class TextProcessor(BaseProcessor, mime_patterns=["text/plain", "text/csv", "app
     async def extract(self, path: Path) -> RawContent:
         """Extract raw content from a text file."""
         logger.info(f"Extracting Text: {path}")
+
+        text_content = ""
+        try:
+            async with aiofiles.open(path, mode='r', encoding='utf-8', errors='ignore') as f:
+                text_content = await f.read()
+        except Exception as e:
+            text_content = f"Error extracting Text: {str(e)}"
+
+        full_text = text_content
+        truncated_text = text_content[:8000]
+
         return RawContent(
-            text="Stub text",
-            full_text="Stub full text",
+            text=truncated_text,
+            full_text=full_text,
             frames=[],
             audio_path=None,
-            metadata={},
+            metadata={"source": "TextProcessor"},
             mime_type="text/plain",
             file_path=path
         )

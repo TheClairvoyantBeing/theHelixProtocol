@@ -3,9 +3,10 @@
 """Event Bus for inter-agent communication."""
 
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any, Callable, Coroutine
 from datetime import datetime, timezone
 import uuid
+import asyncio
 
 @dataclass
 class BaseEvent:
@@ -77,16 +78,19 @@ class SystemAlert(BaseEvent):
 class EventBus:
     """Async Event Bus using custom pub/sub (PyMitt compatible API)."""
     def __init__(self) -> None:
-        self._subscribers: dict[str, list[Callable[..., Any]]] = {}
+        self._subscribers: dict[str, list[Callable[..., Coroutine[Any, Any, None] | None]]] = {}
 
     def publish(self, event: BaseEvent) -> None:
-        """Publishes an event to the bus."""
+        """Publishes an event to the bus. Async handlers are run in tasks to prevent blocking."""
         event_name = type(event).__name__
         handlers = self._subscribers.get(event_name, [])
         for handler in handlers:
-            handler(event)
+            if asyncio.iscoroutinefunction(handler):
+                asyncio.create_task(handler(event))
+            else:
+                handler(event)
 
-    def subscribe(self, event_type: type[BaseEvent] | str, handler: Callable[..., Any]) -> None:
+    def subscribe(self, event_type: type[BaseEvent] | str, handler: Callable[..., Coroutine[Any, Any, None] | None]) -> None:
         """Subscribes a handler to an event type."""
         event_name = event_type if isinstance(event_type, str) else event_type.__name__
         if event_name not in self._subscribers:
