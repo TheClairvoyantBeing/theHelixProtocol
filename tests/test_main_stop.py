@@ -10,4 +10,4 @@ from helix.main import helix_os
 
 @pytest.mark.asyncio
 async def test_helix_os_shutdown():
-    await helix_os.shutdown()
+    await helix_os.stop()

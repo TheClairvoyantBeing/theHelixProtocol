@@ -1,24 +1,31 @@
-# Copyright (c) 2026 HELIX. All rights reserved.
-# HELIX Personal Intelligence OS
 import pytest
+import asyncio
+from sqlalchemy.ext.asyncio import AsyncSession
+from helix.db.schema import apply_pending_migrations, engine as _engine, AsyncSessionLocal as _AsyncSessionLocal
 from unittest.mock import AsyncMock
-import json
-from helix.hardware import HardwareProfile
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_db_sync():
+    async def _setup():
+        async with _engine.begin() as conn:
+            await apply_pending_migrations(conn)
+    asyncio.run(_setup())
 
 @pytest.fixture
 def mock_llm_client():
     client = AsyncMock()
-    client.generate.return_value = json.dumps({
-        "category": "Work/Finance",
-        "tags": ["invoice", "2024", "tax"],
-        "summary": "An invoice document for services rendered.",
-        "confidence": 0.92,
-        "language": "en",
-        "key_entities": []
-    })
-    client.embed.return_value = [[0.1] * 768]
     client.health_check.return_value = True
     return client
+
+@pytest.fixture
+def test_vault(tmp_path):
+    (tmp_path / "raw").mkdir()
+    (tmp_path / "wiki").mkdir()
+    (tmp_path / "memory" / "episodic").mkdir(parents=True)
+    (tmp_path / "memory" / "semantic").mkdir(parents=True)
+    (tmp_path / "self").mkdir()
+    return tmp_path
+from helix.hardware import HardwareProfile
 
 @pytest.fixture
 def mock_hardware_tier2():
@@ -33,12 +40,3 @@ def mock_hardware_tier2():
         platform="linux",
         tier=2
     )
-
-@pytest.fixture
-def test_vault(tmp_path):
-    (tmp_path / "raw").mkdir()
-    (tmp_path / "wiki").mkdir()
-    (tmp_path / "memory" / "episodic").mkdir(parents=True)
-    (tmp_path / "memory" / "semantic").mkdir(parents=True)
-    (tmp_path / "self").mkdir()
-    return tmp_path

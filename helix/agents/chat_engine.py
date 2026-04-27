@@ -87,3 +87,6 @@ class ChatEngine:
         if self._tasks:
             await asyncio.wait(self._tasks, timeout=30.0)
         logger.info("ChatEngine stopped.")
+
+# Shared instance export to avoid duplication across routes/main
+chat_engine = ChatEngine()

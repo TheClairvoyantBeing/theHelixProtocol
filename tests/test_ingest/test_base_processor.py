@@ -23,4 +23,4 @@ async def test_base_processor_stubs():
     assert raw.text == "t"
 
     record = await proc.generate_record(raw, None, None)
-    assert record == {}
+    assert record["category"] == "Unknown"

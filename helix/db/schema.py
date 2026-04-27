@@ -13,13 +13,15 @@ from helix.config import config
 import contextlib
 from typing import AsyncGenerator
 
+# Fix Critical Issue 4: Use path relative to __file__ for reliable PyInstaller execution
+BASE_DIR = Path(__file__).parent.parent.parent
+
 MIGRATIONS = [
-    (1, "initial_schema", "helix/db/migrations/0001_initial.sql"),
+    (1, "initial_schema", BASE_DIR / "helix" / "db" / "migrations" / "0001_initial.sql"),
 ]
 
 async def apply_pending_migrations(conn: AsyncConnection) -> None:
     """Applies any pending migrations to the SQLite database."""
-    # We must use sqlalchemy.text() for raw queries
     await conn.execute(text('''
         CREATE TABLE IF NOT EXISTS schema_migrations (
             version         INTEGER PRIMARY KEY,
@@ -28,16 +30,15 @@ async def apply_pending_migrations(conn: AsyncConnection) -> None:
         )
     '''))
 
-    # Get applied migrations
     result = await conn.execute(text("SELECT version FROM schema_migrations"))
     applied = {row[0] for row in result.fetchall()}
 
     for version, name, path in MIGRATIONS:
         if version not in applied:
-            sql_content = Path(path).read_text()
+            if not path.exists():
+                raise FileNotFoundError(f"Migration file not found: {path}")
+            sql_content = path.read_text()
 
-            # Access the underlying aiosqlite connection correctly for async execution
-            # driver_connection is the aiosqlite.Connection
             raw_conn = await conn.get_raw_connection()
             aiosqlite_conn = raw_conn.driver_connection
             await aiosqlite_conn.executescript(sql_content) # type: ignore
@@ -47,9 +48,7 @@ async def apply_pending_migrations(conn: AsyncConnection) -> None:
                 {"version": version, "name": name, "applied_at": datetime.now(timezone.utc).isoformat()}
             )
 
-# Setup SQLAlchemy engine and session factory
 db_path = Path(config.vault.index_path).expanduser() / "helix.db"
-# Ensure the directory exists
 db_path.parent.mkdir(parents=True, exist_ok=True)
 
 engine = create_async_engine(

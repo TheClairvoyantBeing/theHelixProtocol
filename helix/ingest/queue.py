@@ -9,9 +9,16 @@ import asyncio
 from pathlib import Path
 from typing import Any
 import logging
-from helix.event_bus import bus, FileQueued
+import uuid
+from datetime import datetime, timezone
+from sqlalchemy import text
+
+from helix.event_bus import bus, FileQueued, FileProcessed
 from helix.ingest.router import FileRouter
 from helix.config import config
+from helix.db.schema import get_session
+from helix.llm_client import llm_client
+from helix.db.vector_store import vector_store
 
 logger = logging.getLogger(__name__)
 
@@ -64,19 +71,73 @@ class IngestionQueue:
     async def _process_file(self, event: FileQueued) -> None:
         """Invokes the appropriate processor for the file."""
         path = Path(event.path)
+
+        # 1. Deduplication Check
+        async with get_session() as session:
+            result = await session.execute(
+                text("SELECT id, status FROM files WHERE file_path = :path AND file_hash = :hash"),
+                {"path": str(path), "hash": event.file_hash}
+            )
+            existing = result.fetchone()
+            if existing and existing[1] == "done":
+                logger.debug(f"Skipping {path.name}: Unchanged and already processed.")
+                return
+
+        # 2. Route to Processor
         processor_cls = self.router.get_processor(event.mime_type, path.suffix.lower())
         if not processor_cls:
             logger.warning(f"No processor found for {event.path} ({event.mime_type})")
             return
 
         logger.info(f"Processing {event.path} with {processor_cls.__name__}")
-
         processor = processor_cls()
+        file_id = str(uuid.uuid4())
+
         try:
-            # Emulates extraction pipeline
+            # 3. Extract
             raw = await processor.extract(path)
-            await processor.generate_record(raw, None, config)
-            # In a full implementation, the DB upsert and ChromaDB embedding happen here
+
+            # 4. Generate Record
+            record_dict = await processor.generate_record(raw, llm_client, config)
+
+            # 5. Embed to Vector Store
+            await processor.embed(file_id, raw, vector_store)
+
+            # 6. Save to SQLite
+            now_str = datetime.now(timezone.utc).isoformat()
+            async with get_session() as session:
+                await session.execute(
+                    text("""
+                        INSERT INTO files (id, file_path, file_hash, file_name, extension, mime_type, file_size_kb, indexed_at, status, category)
+                        VALUES (:id, :path, :hash, :name, :ext, :mime, :size, :now, 'done', :cat)
+                        ON CONFLICT(file_path) DO UPDATE SET
+                            file_hash=excluded.file_hash,
+                            indexed_at=excluded.indexed_at,
+                            status=excluded.status,
+                            category=excluded.category
+                    """),
+                    {
+                        "id": file_id,
+                        "path": str(path),
+                        "hash": event.file_hash,
+                        "name": path.name,
+                        "ext": path.suffix.lower(),
+                        "mime": event.mime_type,
+                        "size": path.stat().st_size / 1024,
+                        "now": now_str,
+                        "cat": record_dict.get("category", "Unknown")
+                    }
+                )
+                await session.commit()
+
+            bus.publish(FileProcessed(record={"id": file_id, "path": str(path), "category": record_dict.get("category", "Unknown")}))
             logger.info(f"Successfully processed {path.name}")
+
         except Exception as e:
             logger.error(f"Error processing {path.name}: {e}")
+            async with get_session() as session:
+                await session.execute(
+                    text("UPDATE files SET status = 'error', error_msg = :err WHERE file_path = :path"),
+                    {"path": str(path), "err": str(e)}
+                )
+                await session.commit()

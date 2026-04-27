@@ -1,145 +1,151 @@
+# Copyright (c) 2026 HELIX. All rights reserved.
+# HELIX Personal Intelligence OS
 """
-Module: helix/main.py
-Copyright (c) 2026 HELIX. All rights reserved.
-
-Single entrypoint for HELIX OS. Orchestrates startup and shutdown sequences.
+Main entrypoint and orchestrator for HELIX OS.
+Handles startup/shutdown sequences and runs the FastAPI server.
 """
 
 import asyncio
 import logging
-from typing import Any
 import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from typing import Any
 
+# Force load of config before other imports
 from helix.config import config
 from helix.hardware import HardwareProbe
 from helix.model_selector import ModelSelector
 from helix.db.schema import engine, apply_pending_migrations
 from helix.event_bus import bus, SystemAlert
-from helix.scheduler import Scheduler
-from helix.voice.voice_gate import VoiceGate
-from helix.ingest.watcher import FileWatcher
-from helix.ingest.router import FileRouter
-from helix.ingest.queue import IngestionQueue
 
-# Agents
 from helix.agents.memory_manager import MemoryManager
 from helix.agents.wiki_agent import WikiAgent
 from helix.agents.graph_builder import GraphBuilder
 from helix.agents.task_agent import TaskAgent
 from helix.agents.calendar_agent import CalendarAgent
 from helix.agents.reflex_agent import ReflexAgent
-from helix.agents.chat_engine import ChatEngine
+# Fix Critical Issue 5: import shared chat_engine
+from helix.agents.chat_engine import chat_engine as shared_chat_engine
 from helix.agents.export_agent import ExportAgent
 
+from helix.ingest.router import FileRouter
+from helix.ingest.queue import IngestionQueue
+from helix.ingest.watcher import FileWatcher
+from helix.scheduler import Scheduler
+from helix.voice.voice_gate import VoiceGate
 from helix.api.app import app
 
-logging.basicConfig(level=logging.DEBUG if config.vault.debug else logging.INFO)
-logger = logging.getLogger(__name__)
+# Set up logging based on config
+logging.basicConfig(
+    level=logging.DEBUG if config.vault.debug else logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger("helix.main")
 
 class HelixOS:
-    """Manages the full lifecycle of the HELIX OS components."""
+    """Master orchestrator for HELIX components."""
 
     def __init__(self) -> None:
-        self.scheduler = Scheduler()
-        self.voice_gate = VoiceGate()
-        self.router = FileRouter()
-        self.queue = IngestionQueue(self.router)
-        self.watcher = FileWatcher()
-
-        # Initialize agents
         self.memory_manager = MemoryManager()
         self.wiki_agent = WikiAgent()
         self.graph_builder = GraphBuilder()
         self.task_agent = TaskAgent()
         self.calendar_agent = CalendarAgent()
         self.reflex_agent = ReflexAgent()
-        self.chat_engine = ChatEngine()
+        self.chat_engine = shared_chat_engine
         self.export_agent = ExportAgent()
 
-        self._tasks: list[asyncio.Task[Any]] = []
+        self.file_router = FileRouter()
+        self.ingestion_queue = IngestionQueue(self.file_router)
+        self.file_watcher = FileWatcher()
+        self.scheduler = Scheduler()
+        self.voice_gate = VoiceGate()
+        self.hardware_probe = HardwareProbe()
+        self.model_selector = ModelSelector()
 
-    async def startup(self) -> None:
-        """Executes the startup sequence from Phase 5.1 of ARCHITECTURE.md."""
-        logger.info("Starting HELIX...")
+    async def start(self) -> None:
+        """Start all components in the strict order required by ARCHITECTURE.md."""
+        logger.info("Starting HELIX OS...")
 
-        # 1. Config loaded (happens on import)
+        # 1. Hardware Probe
+        profile = self.hardware_probe.run()
+        logger.info(f"Hardware Profile: Tier {profile.tier} ({profile.gpu_name})")
 
-        # 2. Hardware Probe
-        probe = HardwareProbe()
-        profile = probe.run()
+        # 2. Model Selector
+        self.model_selector.select(profile)
 
-        # 3. Model Selector
-        selector = ModelSelector()
-        selector.select(profile)
-
-        # 4. DB Migrations
+        # 3. DB Migrations
         async with engine.begin() as conn:
-            await apply_pending_migrations(conn) # type: ignore
+            await apply_pending_migrations(conn)
 
-        # 5. FastAPI is started by uvicorn below
-
-        # 6 & 7. Start Agents (in specific order)
-        agents = [
+        # 4. Start Agents
+        agent_tasks: list[Any] = [
             self.memory_manager, self.wiki_agent, self.graph_builder,
             self.task_agent, self.calendar_agent, self.reflex_agent,
             self.chat_engine, self.export_agent
         ]
-        for agent in agents:
-            self._tasks.append(asyncio.create_task(agent.run())) # type: ignore
+        for agent in agent_tasks:
+            # We don't await the run() as it's an infinite loop, we create a task
+            asyncio.create_task(agent.run())
 
-        # 8. Start Ingestion
-        await self.queue.start()
-        await self.watcher.start()
+        # 5. Start Pipeline
+        await self.ingestion_queue.start()
+        await self.file_watcher.start()
 
-        # 9. Start Scheduler
+        # 6. Start Background Services
         await self.scheduler.start()
-
-        # 10. Start VoiceGate
         await self.voice_gate.start()
 
         bus.publish(SystemAlert(level="info", message="HELIX ready"))
-        logger.info("HELIX ready.")
+        logger.info("HELIX OS Startup Complete.")
 
-    async def shutdown(self) -> None:
-        """Executes the shutdown sequence from Phase 5.2 of ARCHITECTURE.md."""
-        logger.info("Shutting down HELIX...")
+    async def stop(self) -> None:
+        """Graceful shutdown in reverse order."""
+        logger.info("Shutting down HELIX OS...")
         bus.publish(SystemAlert(level="info", message="HELIX shutting down"))
 
-        await self.watcher.stop()
         await self.voice_gate.stop()
-        await self.queue.stop()
+        await self.scheduler.stop()
 
-        agents = [
+        await self.file_watcher.stop()
+        await self.ingestion_queue.stop()
+
+        agent_tasks: list[Any] = [
             self.export_agent, self.chat_engine, self.reflex_agent,
             self.calendar_agent, self.task_agent, self.graph_builder,
             self.wiki_agent, self.memory_manager
         ]
-        for agent in agents:
-            await agent.stop() # type: ignore
-
-        for task in self._tasks:
-            task.cancel()
+        for agent in agent_tasks:
+            await agent.stop()
 
         await engine.dispose()
-        logger.info("HELIX gracefully stopped.")
+        logger.info("Shutdown complete.")
 
+# Global instance
 helix_os = HelixOS()
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> Any: # type: ignore
-    """Lifespan hook for FastAPI."""
-    await helix_os.startup()
+async def lifespan(app: FastAPI) -> Any:
+    """FastAPI lifespan manager for tying OS lifecycle to the web server."""
+    await helix_os.start()
     yield
-    await helix_os.shutdown()
+    await helix_os.stop()
 
-app.router.lifespan_context = lifespan # type: ignore
+# Attach lifespan to imported app
+app.router.lifespan_context = lifespan
 
 def main() -> None:
-    """Entry point wrapper for uvicorn."""
-    pass # is_dev = "--dev" in sys.argv
-    uvicorn.run(app, host="127.0.0.1", port=config.ui.port)
+    """Main entrypoint for running the uvicorn server."""
+    logger.info("Initializing application...")
+
+    # Use the 'app' module variable instead of string for PyInstaller compatibility
+    uvicorn.run(
+        app,
+        host="127.0.0.1",
+        port=config.ui.port,
+        log_level="debug" if config.vault.debug else "info"
+    )
 
 if __name__ == "__main__":
     main()
