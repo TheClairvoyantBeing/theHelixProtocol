@@ -1,101 +1,93 @@
-<!--
-Module: frontend/src/views/Chat.svelte
-Copyright (c) 2026 HELIX. All rights reserved.
-Chat View Component with SSE streaming support.
--->
 <script>
-    import { api } from '../lib/api.js';
-    import DOMPurify from 'dompurify';
-    import { marked } from 'marked';
+    import { api } from "../lib/api.js";
+    import { marked } from "marked";
+    import DOMPurify from "dompurify";
 
+    let inputMessage = $state("");
     let messages = $state([]);
-    let inputValue = $state("");
+    let sessionId = $state("session_123");
     let isStreaming = $state(false);
-    let currentSession = $state("default_session");
 
     async function sendMessage() {
-        if (!inputValue.trim() || isStreaming) return;
+        if (!inputMessage.trim()) return;
 
-        const userMsg = { role: "user", content: inputValue };
-        messages = [...messages, userMsg];
-        const contentToSend = inputValue;
-        inputValue = "";
-
+        const userMsg = inputMessage;
+        messages = [...messages, { role: "user", content: userMsg }];
+        inputMessage = "";
         isStreaming = true;
 
+        // Create a placeholder for the assistant's streaming response
+        let assistantMsg = { role: "assistant", content: "" };
+        messages = [...messages, assistantMsg];
+
         try {
-            const res = await api.chat.message(currentSession, contentToSend);
+            const response = await api.chat.message(sessionId, userMsg);
 
-            if (!res.ok) throw new Error("Failed to connect to chat stream.");
-
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder("utf-8");
-
-            // Add placeholder for assistant response
-            let assistantMsgIndex = messages.length;
-            messages = [...messages, { role: "assistant", content: "" }];
+            // Handle Server-Sent Events from the streaming response
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
 
             while (true) {
-                const { done, value } = await reader.read();
+                const { value, done } = await reader.read();
                 if (done) break;
 
                 const chunk = decoder.decode(value, { stream: true });
-                messages[assistantMsgIndex].content += chunk;
-                // Trigger reactivity by reassigning
-                messages = [...messages];
+                // Assuming chunk contains raw text or SSE format, typically SSE is structured `data: ...`
+                // We'll append it directly for this basic stream handling
+                assistantMsg.content += chunk.replace(/^data:\s*/gm, "");
+                messages[messages.length - 1] = assistantMsg;
             }
-        } catch (error) {
-            console.error("Chat streaming error:", error);
-            messages = [...messages, { role: "system", content: "Error communicating with HELIX." }];
+        } catch (e) {
+            console.error(e);
+            assistantMsg.content += "\n\n**Error:** Failed to get response.";
+            messages[messages.length - 1] = assistantMsg;
         } finally {
             isStreaming = false;
         }
     }
-
-    // Function to safely render markdown
-    function renderMarkdown(content) {
-        return DOMPurify.sanitize(marked.parse(content));
-    }
 </script>
 
-<div class="chat-container flex h-full">
-    <div class="chat-main w-2/3 flex flex-col p-4">
-        <h2 class="text-xl font-bold mb-4">Chat</h2>
-
-        <div class="messages flex-grow overflow-y-auto mb-4">
-            {#each messages as msg}
-                <div class="message mb-3 p-3 rounded-lg {msg.role === 'user' ? 'bg-blue-100 ml-auto' : 'bg-gray-100'}">
+<div class="chat-container h-full flex flex-col">
+    <div class="flex-1 overflow-y-auto p-4 space-y-4">
+        {#each messages as msg}
+            <div class={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div class={`max-w-[75%] rounded p-3 ${msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-200'}`}>
                     {#if msg.role === 'assistant'}
-                        {@html renderMarkdown(msg.content)}
+                        <!-- Safe markdown rendering -->
+                        <div class="markdown-body">
+                            {@html DOMPurify.sanitize(marked(msg.content))}
+                        </div>
                     {:else}
                         {msg.content}
                     {/if}
                 </div>
-            {/each}
-        </div>
+            </div>
+        {/each}
+    </div>
 
-        <div class="input-area flex gap-2">
+    <div class="p-4 bg-gray-800 border-t border-gray-700">
+        <form class="flex gap-2" onsubmit={(e) => { e.preventDefault(); sendMessage(); }}>
             <input
                 type="text"
-                class="flex-grow border p-2 rounded"
-                bind:value={inputValue}
-                onkeydown={e => e.key === 'Enter' && sendMessage()}
+                bind:value={inputMessage}
                 placeholder="Ask HELIX..."
+                class="flex-1 bg-gray-900 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500"
                 disabled={isStreaming}
             />
             <button
-                class="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
-                onclick={sendMessage}
-                disabled={isStreaming}
+                type="submit"
+                class="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded font-semibold disabled:opacity-50"
+                disabled={isStreaming || !inputMessage.trim()}
             >
                 Send
             </button>
-        </div>
-    </div>
-
-    <div class="chat-sidebar w-1/3 border-l p-4">
-        <h3 class="font-bold">Why HELIX knows this</h3>
-        <p class="text-sm text-gray-500">Memory inspector panel</p>
-        <!-- Memory details will go here -->
+        </form>
     </div>
 </div>
+
+<style>
+    /* Basic markdown body styles */
+    .markdown-body :global(p) { margin-bottom: 0.5em; }
+    .markdown-body :global(pre) { background: #1a202c; padding: 1em; border-radius: 0.25rem; overflow-x: auto; }
+    .markdown-body :global(code) { font-family: monospace; }
+</style>

@@ -1,44 +1,44 @@
-<!--
-Module: frontend/src/views/Settings.svelte
-Copyright (c) 2026 HELIX. All rights reserved.
-Settings dashboard for OS configuration.
--->
 <script>
-    // Component state using Svelte 5 runes
-    let vaultPath = $state("~/Documents");
-    let aiModel = $state("llama3:8b");
+    import { onMount } from "svelte";
+    import { api } from "../lib/api.js";
 
-    /**
-     * Handles saving settings.
-     * Prevents default form submission and alerts the user.
-     */
-    function saveSettings(e) {
-        e.preventDefault();
-        alert("Settings saved locally.");
+    let hardware = $state(null);
+    let loading = $state(true);
+    let theme = $state("dark"); // We'll store basic UI state locally
+
+    onMount(async () => {
+        try {
+            hardware = await api.system.hardware();
+        } catch (e) {
+            console.error(e);
+        }
+        loading = false;
+    });
+
+    function toggleTheme() {
+        theme = theme === "dark" ? "light" : "dark";
+        document.body.className = theme === "dark" ? "bg-gray-900 text-white min-h-screen" : "bg-white text-gray-900 min-h-screen";
     }
 </script>
 
-<div class="settings-container p-4 max-w-lg">
+<div class="settings-container p-4">
     <h2 class="text-xl font-bold mb-4">Settings</h2>
 
-    <!-- Settings form -->
-    <form onsubmit={saveSettings} class="space-y-4 border p-6 rounded bg-white">
-        <!-- Vault Directory Configuration -->
-        <div>
-            <label class="block font-semibold mb-1" for="vaultPath">Vault Directory</label>
-            <input id="vaultPath" type="text" bind:value={vaultPath} class="w-full border p-2 rounded" />
-        </div>
+    <div class="mb-8">
+        <h3 class="text-lg font-semibold border-b border-gray-700 pb-2 mb-4">Appearance</h3>
+        <button class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded" onclick={toggleTheme}>
+            Toggle Theme (Current: {theme})
+        </button>
+    </div>
 
-        <!-- AI Model Configuration -->
-        <div>
-            <label class="block font-semibold mb-1" for="aiModel">Preferred Model</label>
-            <select id="aiModel" bind:value={aiModel} class="w-full border p-2 rounded">
-                <option value="llama3:70b">Llama 3 70B (High Tier)</option>
-                <option value="llama3:8b">Llama 3 8B (Mid Tier)</option>
-                <option value="gemma:2b">Gemma 2B (Low Tier / CPU)</option>
-            </select>
-        </div>
-
-        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
-    </form>
+    <div class="mb-8">
+        <h3 class="text-lg font-semibold border-b border-gray-700 pb-2 mb-4">Hardware Info</h3>
+        {#if loading}
+            <p>Loading hardware details...</p>
+        {:else if hardware}
+            <pre class="bg-gray-800 p-4 rounded text-sm text-gray-300 overflow-auto">{JSON.stringify(hardware, null, 2)}</pre>
+        {:else}
+            <p class="text-red-400">Failed to load hardware profile.</p>
+        {/if}
+    </div>
 </div>

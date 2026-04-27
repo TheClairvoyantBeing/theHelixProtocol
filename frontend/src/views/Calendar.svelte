@@ -6,12 +6,8 @@ Calendar view utilizing FullCalendar.
 <script>
     import { onMount } from "svelte";
     import { api } from "../lib/api.js";
-    // Simulated import for FullCalendar to avoid massive NPM installs in sandbox
-    // import { Calendar } from '@fullcalendar/core';
-    // import dayGridPlugin from '@fullcalendar/daygrid';
-    // import timeGridPlugin from '@fullcalendar/timegrid';
 
-    let calendarEl;
+    let calendarEl = $state();
     let loading = $state(true);
     let events = $state([]);
 
@@ -21,17 +17,6 @@ Calendar view utilizing FullCalendar.
         } catch (e) {
             console.error(e);
         }
-
-        // In a real environment, we instantiate FullCalendar here
-        /*
-        let calendar = new Calendar(calendarEl, {
-          plugins: [dayGridPlugin, timeGridPlugin],
-          initialView: 'dayGridMonth',
-          events: '/api/v1/calendar/events',
-          editable: true
-        });
-        calendar.render();
-        */
         loading = false;
     });
 </script>

@@ -6,6 +6,8 @@ import asyncio
 import logging
 from typing import Any
 from helix.event_bus import bus, ChatTurn
+from helix.llm_client import llm_client
+from helix.db.vector_store import vector_store
 
 logger = logging.getLogger(__name__)
 
@@ -19,16 +21,62 @@ class ChatEngine:
 
     def _on_chat_turn(self, event: ChatTurn) -> None:
         logger.debug(f"ChatEngine processing ChatTurn for session {event.session_id}")
+        # In a full implementation, this might asynchronously trigger memory consolidation
+        # or graph queries.
 
     async def search(self, query: str, mode: str = "hybrid", limit: int = 10) -> list[dict[str, Any]]:
-        """Stub for semantic/hybrid search method."""
+        """Semantic/hybrid search method via VectorStore."""
         logger.debug(f"ChatEngine search: query='{query}' mode='{mode}'")
-        return []
+        try:
+            # Generate embedding for the query
+            embeddings = await llm_client.embed([query])
+            if not embeddings:
+                return []
+
+            # Query the chunks collection
+            results = vector_store.query("helix_chunks", query_embeddings=embeddings, n_results=limit)
+
+            # Format results
+            formatted_results = []
+            if results and "documents" in results and results["documents"]:
+                for i, doc_list in enumerate(results["documents"]):
+                    if doc_list: # chroma returns a list of lists depending on input size
+                        for j, doc in enumerate(doc_list):
+                            meta = results["metadatas"][i][j] if "metadatas" in results and results["metadatas"] else {}
+                            dist = results["distances"][i][j] if "distances" in results and results["distances"] else 0.0
+                            formatted_results.append({
+                                "text": doc,
+                                "metadata": meta,
+                                "distance": dist
+                            })
+            return formatted_results
+        except Exception as e:
+            logger.error(f"Search failed: {e}")
+            return []
 
     async def generate_response(self, session_id: str, content: str) -> str:
-        """Generates a response for a given session and query."""
+        """Generates a response using the LLMClient."""
         logger.info(f"Generating response for {session_id}")
-        return "Stub response"
+
+        # 1. Search for context
+        search_results = await self.search(content, limit=3)
+        context_str = ""
+        for i, res in enumerate(search_results):
+            context_str += f"Context {i+1}:\n{res['text']}\n\n"
+
+        # 2. Build Prompt
+        system_prompt = "You are HELIX, a helpful Personal Intelligence OS. Answer concisely based on the user's data vault."
+        user_prompt = f"User Query: {content}\n\n"
+        if context_str:
+            user_prompt += f"Relevant Vault Information:\n{context_str}"
+
+        # 3. Call LLM
+        try:
+            response = await llm_client.generate(prompt=user_prompt, system=system_prompt)
+            return response
+        except Exception as e:
+            logger.error(f"Response generation failed: {e}")
+            return f"I encountered an error trying to process your request: {e}"
 
     async def run(self) -> None:
         while not self._stop_event.is_set():

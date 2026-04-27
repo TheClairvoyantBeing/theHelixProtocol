@@ -19,22 +19,34 @@ from helix.api.schemas import (
     MemoryProfileResponse, MemoryProfileData, FactListResponse, RuleListResponse,
     ExportStartRequest, ExportStartResponse, ExportStartData, ExportStatusResponse, ExportStatusData
 )
+from helix.agents.chat_engine import ChatEngine
+from helix.event_bus import bus, ChatTurn
 
 router = APIRouter()
+chat_engine = ChatEngine() # Instantiate it for the route
 
 # Chat
-async def chat_stream_generator() -> AsyncGenerator[str, None]:
-    """Generates a stub SSE stream for the chat response."""
-    yield "Hello, "
-    await asyncio.sleep(0.1)
-    yield "I am HELIX. "
-    await asyncio.sleep(0.1)
-    yield "How can I help you?"
+async def chat_stream_generator(session_id: str, content: str) -> AsyncGenerator[str, None]:
+    """Generates a SSE stream for the chat response."""
+    # Publish event
+    bus.publish(ChatTurn(session_id=session_id, role="user", content=content))
+
+    try:
+        response_text = await chat_engine.generate_response(session_id, content)
+        # Yield in chunks
+        words = response_text.split(" ")
+        for word in words:
+            yield f"data: {word} \n\n"
+            await asyncio.sleep(0.05)
+
+        bus.publish(ChatTurn(session_id=session_id, role="assistant", content=response_text))
+    except Exception as e:
+        yield f"data: Error generating response: {str(e)}\n\n"
 
 @router.post("/chat/message")
 async def chat_message(body: ChatRequest) -> StreamingResponse:
     """Processes a chat message and returns a StreamingResponse (SSE)."""
-    return StreamingResponse(chat_stream_generator(), media_type="text/event-stream")
+    return StreamingResponse(chat_stream_generator(body.session_id, body.content), media_type="text/event-stream")
 
 @router.get("/chat/sessions", response_model=ChatSessionListResponse)
 async def chat_sessions() -> ChatSessionListResponse:
