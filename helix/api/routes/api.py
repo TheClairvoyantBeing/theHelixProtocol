@@ -29,7 +29,6 @@ from helix.llm_client import llm_client
 from helix.db.schema import get_session
 
 router = APIRouter()
-
 # Chat
 async def chat_stream_generator(session_id: str, content: str) -> AsyncGenerator[str, None]:
     """Generates a SSE stream for the chat response."""
@@ -37,6 +36,7 @@ async def chat_stream_generator(session_id: str, content: str) -> AsyncGenerator
 
     try:
         response_text = await chat_engine.generate_response(session_id, content)
+        # Yield in chunks
         words = response_text.split(" ")
         for word in words:
             yield f"data: {word} \n\n"

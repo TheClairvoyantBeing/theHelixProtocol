@@ -10,6 +10,5 @@ __pycache__/
 .mypy_cache/
 node_modules/
 dist/
-poetry.lock
 tests/test_agents/__pycache__/test_memory_manager.cpython-312-pytest-8.4.2.pyc
 frontend/public/fonts/web/

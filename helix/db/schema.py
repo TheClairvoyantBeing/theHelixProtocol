@@ -13,11 +13,10 @@ from helix.config import config
 import contextlib
 from typing import AsyncGenerator
 
-# Fix Critical Issue 4: Use path relative to __file__ for reliable PyInstaller execution
-BASE_DIR = Path(__file__).parent.parent.parent
+MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 
 MIGRATIONS = [
-    (1, "initial_schema", BASE_DIR / "helix" / "db" / "migrations" / "0001_initial.sql"),
+    (1, "initial_schema", MIGRATIONS_DIR / "0001_initial.sql"),
 ]
 
 async def apply_pending_migrations(conn: AsyncConnection) -> None:

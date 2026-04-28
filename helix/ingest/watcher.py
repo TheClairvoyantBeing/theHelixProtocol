@@ -6,6 +6,7 @@ File watcher module to emit FileQueued events.
 """
 
 import asyncio
+import hashlib
 from pathlib import Path
 from typing import Any
 import magic
@@ -54,8 +55,13 @@ class FileWatcher:
             # ALWAYS use python-magic to get accurate MIME type (Rule from DO_NOT_DO.md)
             mime_type = magic.from_file(str(file_path), mime=True)
 
-            # Example SHA-256 generation (stubbed)
-            file_hash = "dummyhash"
+            # Compute SHA-256 hash for file deduplication
+            sha256 = hashlib.sha256()
+            with open(file_path, "rb") as f:
+                for chunk in iter(lambda: f.read(8192), b""):
+                    sha256.update(chunk)
+            file_hash = sha256.hexdigest()
+
             event = FileQueued(path=str(file_path), file_hash=file_hash, mime_type=mime_type)
             bus.publish(event)
         except Exception as e:

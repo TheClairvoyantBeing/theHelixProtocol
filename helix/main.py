@@ -87,7 +87,7 @@ class HelixOS:
         ]
         for agent in agent_tasks:
             # We don't await the run() as it's an infinite loop, we create a task
-            asyncio.create_task(agent.run())
+            self._tasks.append(asyncio.create_task(agent.run()))
 
         # 5. Start Pipeline
         await self.ingestion_queue.start()
