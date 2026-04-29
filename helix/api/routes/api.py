@@ -27,8 +27,10 @@ from helix.agents.chat_engine import chat_engine
 from helix.event_bus import bus, ChatTurn, TaskCreated
 from helix.llm_client import llm_client
 from helix.db.schema import get_session
+from helix.agents.export_agent import ExportAgent
 
 router = APIRouter()
+_export_agent = ExportAgent()
 # Chat
 async def chat_stream_generator(session_id: str, content: str) -> AsyncGenerator[str, None]:
     """Generates a SSE stream for the chat response."""
@@ -243,12 +245,16 @@ async def delete_memory_rule(id: str) -> EmptyDataResponse:
 # Export
 @router.post("/export/start", response_model=ExportStartResponse)
 async def start_export(body: ExportStartRequest) -> ExportStartResponse:
-    """Starts an export job."""
-    return ExportStartResponse(success=True, data=ExportStartData(job_id="stub_job"))
+    """Starts an export job using AES-256-GCM encryption."""
+    job_id = str(uuid.uuid4())
+    passphrase = getattr(body, 'passphrase', 'default_secret')  # Usually passed in request, mocked default here
+    asyncio.create_task(_export_agent.create_export(job_id, [], passphrase))
+    return ExportStartResponse(success=True, data=ExportStartData(job_id=job_id))
 
 @router.get("/export/status/{job_id}", response_model=ExportStatusResponse)
 async def get_export_status(job_id: str) -> ExportStatusResponse:
     """Retrieves status of an export job."""
+    # Stubbed response
     return ExportStatusResponse(success=True, data=ExportStatusData(status="done"))
 
 @router.get("/export/download/{job_id}", response_model=EmptyDataResponse)
