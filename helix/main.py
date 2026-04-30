@@ -63,6 +63,7 @@ class HelixOS:
         self.voice_gate = VoiceGate()
         self.hardware_probe = HardwareProbe()
         self.model_selector = ModelSelector()
+        self._tasks: list[asyncio.Task[Any]] = []
 
     async def start(self) -> None:
         """Start all components in the strict order required by ARCHITECTURE.md."""

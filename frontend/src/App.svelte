@@ -1,10 +1,11 @@
 <!-- Copyright (c) 2026 HELIX. All rights reserved. -->
 <script>
   import { onMount } from 'svelte';
-  import {
-    IconMessage, IconCalendarEvent, IconLayoutDashboard,
-    IconBook, IconTopologyStar3, IconFiles, IconSettings
-  } from '@tabler/icons-svelte';
+
+  import { currentView } from './stores/helix.js';
+
+  import Ribbon from './components/Ribbon.svelte';
+  import Sidebar from './components/Sidebar.svelte';
 
   import Chat from './views/Chat.svelte';
   import Settings from './views/Settings.svelte';
@@ -13,8 +14,6 @@
   import Wiki from './views/Wiki.svelte';
   import Graph from './views/Graph.svelte';
   import Files from './views/Files.svelte';
-
-  let currentView = $state('chat');
 
   // Handle theme persistence
   onMount(() => {
@@ -27,60 +26,37 @@
       }
   });
 
-  const menuItems = [
-    { id: 'chat', label: 'Chat', icon: IconMessage },
-    { id: 'today', label: 'Today', icon: IconLayoutDashboard },
-    { id: 'wiki', label: 'Wiki', icon: IconBook },
-    { id: 'graph', label: 'Graph', icon: IconTopologyStar3 },
-    { id: 'files', label: 'Files', icon: IconFiles },
-    { id: 'calendar', label: 'Calendar', icon: IconCalendarEvent },
-    { id: 'settings', label: 'Settings', icon: IconSettings },
-  ];
 </script>
 
-<div class="h-screen w-full flex bg-obsidian-50 dark:bg-obsidian-900 transition-colors">
+<div class="h-screen w-full flex bg-obsidian-50 dark:bg-obsidian-900 transition-colors overflow-hidden">
 
-  <!-- Premium Left Sidebar -->
-  <aside class="w-64 border-r border-gray-200 dark:border-obsidian-700 bg-obsidian-100 dark:bg-obsidian-800 flex flex-col transition-colors">
-    <div class="p-6 flex items-center gap-3 border-b border-gray-200 dark:border-obsidian-700">
-      <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-claude-accent to-orange-400 flex items-center justify-center shadow-lg">
-        <span class="text-white font-bold text-lg leading-none">H</span>
-      </div>
-      <h1 class="text-xl font-bold tracking-wide text-gray-900 dark:text-gray-100">HELIX</h1>
-    </div>
+  <!-- Left Ribbon (icon rail - 44px wide) -->
+  <Ribbon />
 
-    <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
-      {#each menuItems as item}
-        <button
-          class={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium
-            ${currentView === item.id
-              ? 'bg-white dark:bg-obsidian-600 text-claude-accent shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-obsidian-700 hover:text-gray-900 dark:hover:text-gray-200'}`}
-          onclick={() => currentView = item.id}
-        >
-          <item.icon size={20} stroke={2} />
-          {item.label}
-        </button>
-      {/each}
-    </nav>
-  </aside>
+  <!-- Left Sidebar (collapsible 280px) -->
+  <Sidebar />
 
   <!-- Main Content Area -->
-  <main class="flex-1 overflow-hidden relative flex flex-col bg-white dark:bg-obsidian-900 transition-colors shadow-inner">
-    {#if currentView === 'chat'}
+  <main class="flex-1 overflow-hidden relative flex flex-col bg-white dark:bg-obsidian-900 transition-colors shadow-inner z-0">
+    {#if $currentView === 'chat'}
       <Chat />
-    {:else if currentView === 'settings'}
+    {:else if $currentView === 'settings'}
       <Settings />
-    {:else if currentView === 'calendar'}
+    {:else if $currentView === 'calendar'}
       <Calendar />
-    {:else if currentView === 'today'}
+    {:else if $currentView === 'today'}
       <Today />
-    {:else if currentView === 'wiki'}
+    {:else if $currentView === 'wiki'}
       <Wiki />
-    {:else if currentView === 'graph'}
+    {:else if $currentView === 'graph'}
       <Graph />
-    {:else if currentView === 'files'}
+    {:else if $currentView === 'files'}
       <Files />
+    {:else}
+      <!-- Fallback or mock views for 'search', 'memory', 'ingest' -->
+      <div class="h-full flex items-center justify-center text-gray-500">
+         View: {$currentView} (Not yet fully implemented)
+      </div>
     {/if}
   </main>
 </div>
