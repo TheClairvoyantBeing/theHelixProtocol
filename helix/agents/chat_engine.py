@@ -4,7 +4,7 @@
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, AsyncGenerator
 from helix.event_bus import bus, ChatTurn
 from helix.llm_client import llm_client
 from helix.db.vector_store import vector_store
@@ -54,29 +54,46 @@ class ChatEngine:
             logger.error(f"Search failed: {e}")
             return []
 
-    async def generate_response(self, session_id: str, content: str) -> str:
-        """Generates a response using the LLMClient."""
-        logger.info(f"Generating response for {session_id}")
-
-        # 1. Search for context
-        search_results = await self.search(content, limit=3)
-        context_str = ""
-        for i, res in enumerate(search_results):
-            context_str += f"Context {i+1}:\n{res['text']}\n\n"
-
-        # 2. Build Prompt
+    def _build_prompt(self, content: str, search_results: list[dict[str, Any]]) -> tuple[str, str]:
+        """Build system and user prompts with RAG context."""
         system_prompt = "You are HELIX, a helpful Personal Intelligence OS. Answer concisely based on the user's data vault."
         user_prompt = f"User Query: {content}\n\n"
-        if context_str:
+
+        if search_results:
+            context_str = ""
+            for i, res in enumerate(search_results):
+                context_str += f"Context {i+1}:\n{res['text']}\n\n"
             user_prompt += f"Relevant Vault Information:\n{context_str}"
 
-        # 3. Call LLM
+        return system_prompt, user_prompt
+
+    async def generate_response(self, session_id: str, content: str) -> str:
+        """Generates a response using the LLMClient (non-streaming)."""
+        logger.info(f"Generating response for {session_id}")
+
+        search_results = await self.search(content, limit=3)
+        system_prompt, user_prompt = self._build_prompt(content, search_results)
+
         try:
             response = await llm_client.generate(prompt=user_prompt, system=system_prompt)
             return response
         except Exception as e:
             logger.error(f"Response generation failed: {e}")
             return f"I encountered an error trying to process your request: {e}"
+
+    async def generate_response_stream(self, session_id: str, content: str) -> AsyncGenerator[str, None]:
+        """Generates a streaming response using the LLM streaming API for real SSE."""
+        logger.info(f"Generating streaming response for {session_id}")
+
+        search_results = await self.search(content, limit=3)
+        system_prompt, user_prompt = self._build_prompt(content, search_results)
+
+        try:
+            async for chunk in llm_client.generate_stream(prompt=user_prompt, system=system_prompt):
+                yield chunk
+        except Exception as e:
+            logger.error(f"Streaming response generation failed: {e}")
+            yield f"I encountered an error trying to process your request: {e}"
 
     async def run(self) -> None:
         while not self._stop_event.is_set():

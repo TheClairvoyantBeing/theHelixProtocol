@@ -13,25 +13,16 @@
   import { currentView } from '../stores/helix.js';
 
   const menuItems = [
-    { id: 'search', icon: IconSearch, label: 'Search' },
     { id: 'files', icon: IconFolder, label: 'Vault Explorer' },
     { id: 'chat', icon: IconMessage, label: 'HELIX Chat' },
-    { id: 'memory', icon: IconBrain, label: 'Memory' },
     { id: 'graph', icon: IconTopologyStar3, label: 'Graph View' },
     { id: 'today', icon: IconChecklist, label: 'Tasks' },
     { id: 'calendar', icon: IconCalendarEvent, label: 'Calendar' },
-    { id: 'ingest', icon: IconDownload, label: 'Ingest Monitor' },
     { id: 'settings', icon: IconSettings, label: 'Settings' }
   ];
 
   function setView(id) {
-    if (id === 'search' || id === 'memory' || id === 'ingest') {
-        // Just mock these views to redirect to chat or files for now, or you could create empty views.
-        // Or keep them as is and let App.svelte handle defaults.
-        currentView.set(id);
-    } else {
-        currentView.set(id);
-    }
+    currentView.set(id);
   }
 </script>
 

@@ -121,14 +121,14 @@ Graph view for rendering knowledge nodes.
 </script>
 
 <div class="graph-container p-4 h-full flex flex-col">
-    <h2 class="text-xl font-bold mb-4">Knowledge Graph</h2>
+    <h2 class="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Knowledge Graph</h2>
 
     {#if loading}
         <p>Loading graph data...</p>
     {:else if error}
         <p class="text-red-500">Error: {error}</p>
     {:else}
-        <div bind:this={container} class="flex-1 border p-4 bg-gray-800 rounded shadow min-h-[500px] overflow-hidden">
+        <div bind:this={container} class="flex-1 border border-gray-200 dark:border-obsidian-700 p-4 bg-obsidian-50 dark:bg-obsidian-800 rounded-xl shadow-sm min-h-[500px] overflow-hidden">
             {#if nodes.length === 0}
                 <p class="text-gray-400 italic">Graph is empty.</p>
             {/if}
