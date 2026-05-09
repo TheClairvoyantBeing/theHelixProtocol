@@ -12,6 +12,11 @@
     let isStreaming = $state(false);
     let showMemoryPanel = $state(false);
     let chatContainer = $state(null);
+    
+    // Memory data
+    let semanticFacts = $state([]);
+    let recentSessions = $state([]);
+    let loadingMemory = $state(false);
 
     // Load initial context or session if needed
     onMount(() => {
@@ -26,6 +31,28 @@
     $effect(() => {
         if (messages.length && chatContainer) {
             chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    });
+
+    async function fetchMemoryData() {
+        loadingMemory = true;
+        try {
+            const [facts, sessions] = await Promise.all([
+                api.memory.facts ? api.memory.facts() : Promise.resolve([]),
+                api.chat.sessions ? api.chat.sessions() : Promise.resolve([])
+            ]);
+            semanticFacts = facts || [];
+            recentSessions = (sessions || []).filter(s => s !== sessionId).slice(0, 5);
+        } catch (e) {
+            console.error("Failed to fetch memory data:", e);
+        } finally {
+            loadingMemory = false;
+        }
+    }
+
+    $effect(() => {
+        if (showMemoryPanel) {
+            fetchMemoryData();
         }
     });
 
@@ -165,20 +192,40 @@
             <div>
                 <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Semantic Memory</h4>
                 <div class="space-y-2">
-                    <!-- Stub data for UI purposes -->
-                    <div class="p-3 bg-white dark:bg-obsidian-900 border border-gray-200 dark:border-obsidian-700 rounded text-sm text-gray-700 dark:text-gray-300 shadow-sm">
-                        User prefers concise, bulleted answers.
-                    </div>
+                    {#if loadingMemory}
+                        <div class="animate-pulse space-y-2">
+                            <div class="h-10 bg-gray-200 dark:bg-obsidian-700 rounded"></div>
+                            <div class="h-10 bg-gray-200 dark:bg-obsidian-700 rounded"></div>
+                        </div>
+                    {:else if semanticFacts.length === 0}
+                        <p class="text-xs text-gray-500 italic text-center py-2">No facts stored yet.</p>
+                    {:else}
+                        {#each semanticFacts as fact}
+                            <div class="p-3 bg-white dark:bg-obsidian-900 border border-gray-200 dark:border-obsidian-700 rounded text-sm text-gray-700 dark:text-gray-300 shadow-sm">
+                                {fact.fact}
+                            </div>
+                        {/each}
+                    {/if}
                 </div>
             </div>
 
             <div>
-                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Episodic Context (Top 3)</h4>
+                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Episodic Context (Recent)</h4>
                 <div class="space-y-3">
-                    <div class="p-3 bg-white dark:bg-obsidian-900 border border-gray-200 dark:border-obsidian-700 rounded shadow-sm">
-                        <p class="text-xs text-gray-400 mb-1">Yesterday, 14:30</p>
-                        <p class="text-sm text-gray-700 dark:text-gray-300 line-clamp-3">Discussing the architecture for the new Project Alpha migration.</p>
-                    </div>
+                    {#if loadingMemory}
+                        <div class="animate-pulse space-y-2">
+                            <div class="h-16 bg-gray-200 dark:bg-obsidian-700 rounded"></div>
+                        </div>
+                    {:else if recentSessions.length === 0}
+                        <p class="text-xs text-gray-500 italic text-center py-2">No recent sessions.</p>
+                    {:else}
+                        {#each recentSessions as sess}
+                            <div class="p-3 bg-white dark:bg-obsidian-900 border border-gray-200 dark:border-obsidian-700 rounded shadow-sm cursor-pointer hover:border-claude-accent transition-colors" onclick={() => { sessionId = sess; activeSession.set(sess); showMemoryPanel = false; }}>
+                                <p class="text-xs text-gray-400 mb-1">Session</p>
+                                <p class="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{sess}</p>
+                            </div>
+                        {/each}
+                    {/if}
                 </div>
             </div>
 

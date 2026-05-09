@@ -33,7 +33,6 @@ from helix.ingest.router import FileRouter
 from helix.ingest.queue import IngestionQueue
 from helix.ingest.watcher import FileWatcher
 from helix.scheduler import Scheduler
-from helix.voice.voice_gate import VoiceGate
 from helix.api.app import app
 
 # Set up logging based on config
@@ -60,7 +59,6 @@ class HelixOS:
         self.ingestion_queue = IngestionQueue(self.file_router)
         self.file_watcher = FileWatcher()
         self.scheduler = Scheduler()
-        self.voice_gate = VoiceGate()
         self.hardware_probe = HardwareProbe()
         self.model_selector = ModelSelector()
         self._tasks: list[asyncio.Task[Any]] = []
@@ -96,7 +94,6 @@ class HelixOS:
 
         # 6. Start Background Services
         await self.scheduler.start()
-        await self.voice_gate.start()
 
         bus.publish(SystemAlert(level="info", message="HELIX ready"))
         logger.info("HELIX OS Startup Complete.")
@@ -106,7 +103,6 @@ class HelixOS:
         logger.info("Shutting down HELIX OS...")
         bus.publish(SystemAlert(level="info", message="HELIX shutting down"))
 
-        await self.voice_gate.stop()
         await self.scheduler.stop()
 
         await self.file_watcher.stop()

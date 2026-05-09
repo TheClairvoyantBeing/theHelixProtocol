@@ -40,12 +40,6 @@ class UISettings(BaseModel):
     max_context_k: int = 8
     port: int = 7331
 
-class VoiceSettings(BaseModel):
-    enabled: bool = False
-    wake_word: str = "hey helix"
-    tts_enabled: bool = False
-    tts_engine: str = "piper"
-
 class SchedulerSettings(BaseModel):
     nightly_reflex_hour: int = 2
     nightly_consolidation_hour: int = 1
@@ -60,7 +54,6 @@ class VaultConfig(BaseSettings):
     model: ModelSettings = Field(default_factory=ModelSettings)
     processing: ProcessingSettings = Field(default_factory=ProcessingSettings)
     ui: UISettings = Field(default_factory=UISettings)
-    voice: VoiceSettings = Field(default_factory=VoiceSettings)
     scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
     export: ExportSettings = Field(default_factory=ExportSettings)
 
