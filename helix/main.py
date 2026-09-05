@@ -78,15 +78,24 @@ class HelixOS:
         async with engine.begin() as conn:
             await apply_pending_migrations(conn)
 
-        # 4. Start Agents
+        # 4. Start Agents with resilient error capture callbacks
         agent_tasks: list[Any] = [
             self.memory_manager, self.wiki_agent, self.graph_builder,
             self.task_agent, self.calendar_agent, self.reflex_agent,
             self.chat_engine, self.export_agent
         ]
+        def _task_error_callback(t: asyncio.Task, name: str) -> None:
+            if not t.cancelled():
+                exc = t.exception()
+                if exc:
+                    logger.error(f"HELIX Background agent '{name}' crashed: {exc}", exc_info=exc)
+                    bus.publish(SystemAlert(level="error", message=f"Agent '{name}' crashed: {exc}"))
+
         for agent in agent_tasks:
-            # We don't await the run() as it's an infinite loop, we create a task
-            self._tasks.append(asyncio.create_task(agent.run()))
+            agent_name = agent.__class__.__name__
+            task = asyncio.create_task(agent.run(), name=f"helix_agent_{agent_name}")
+            task.add_done_callback(lambda t, n=agent_name: _task_error_callback(t, n))
+            self._tasks.append(task)
 
         # 5. Start Pipeline
         await self.ingestion_queue.start()
