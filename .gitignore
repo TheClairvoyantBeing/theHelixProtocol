@@ -12,3 +12,18 @@ node_modules/
 dist/
 tests/test_agents/__pycache__/test_memory_manager.cpython-312-pytest-8.4.2.pyc
 frontend/public/fonts/web/
+
+# Standard repository hygiene
+.idea/
+.vscode/
+build/
+out/
+target/
+coverage/
+htmlcov/
+.venv/
+venv/
+env/
+.env
+.env.*
+reviews.md
